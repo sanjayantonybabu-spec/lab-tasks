@@ -9,22 +9,22 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
-      --bg-deep: #0C1220;<a href="lab-task-manager.html">Lab Task Manager</a>
-      --bg-primary: #111827;
-      --bg-card: #1A2235;
-      --bg-input: #0E1729;
-      --border: #283044;
-      --border-hover: #3B4A63;
-      --text-primary: #F1F5F9;
-      --text-secondary: #94A3B8;
+      --bg-deep: #F1F5F9;
+      --bg-primary: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-input: #F8FAFC;
+      --border: #E2E8F0;
+      --border-hover: #CBD5E1;
+      --text-primary: #1E293B;
+      --text-secondary: #475569;
       --text-muted: #64748B;
-      --text-dim: #475569;
-      --accent-blue: #3B82F6;
-      --accent-purple: #8B5CF6;
-      --accent-green: #10B981;
-      --accent-red: #EF4444;
-      --accent-amber: #F59E0B;
-      --accent-cyan: #06B6D4;
+      --text-dim: #94A3B8;
+      --accent-blue: #2563EB;
+      --accent-purple: #7C3AED;
+      --accent-green: #059669;
+      --accent-red: #DC2626;
+      --accent-amber: #D97706;
+      --accent-cyan: #0891B2;
       --font-body: 'DM Sans', -apple-system, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
       --radius-sm: 8px;
@@ -76,6 +76,7 @@
       border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 100;
       backdrop-filter: blur(12px);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     .header-inner {
       max-width: 1280px; margin: 0 auto; padding: 0 24px;
@@ -97,7 +98,7 @@
       font-size: 13px; font-weight: 500; font-family: var(--font-body);
       transition: all 0.15s; display: flex; align-items: center; gap: 6px;
     }
-    .nav-btn:hover { color: var(--text-secondary); background: rgba(255,255,255,0.04); }
+    .nav-btn:hover { color: var(--text-secondary); background: rgba(0,0,0,0.04); }
     .nav-btn.active { color: var(--text-primary); background: var(--border); }
     .user-pill {
       display: flex; align-items: center; gap: 10px;
@@ -133,7 +134,7 @@
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-xl); padding: 48px 44px;
       max-width: 460px; width: 100%;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.08);
       animation: fadeUp 0.6s ease;
     }
     .login-card h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; }
@@ -143,14 +144,14 @@
       background: #fff; color: #333; border: none; cursor: pointer;
       font-size: 15px; font-weight: 600; font-family: var(--font-body);
       display: flex; align-items: center; justify-content: center; gap: 12px;
-      transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    .google-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .google-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
     .google-btn svg { width: 20px; height: 20px; }
     .access-denied {
       margin-top: 20px; padding: 16px; border-radius: var(--radius-md);
       background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
-      color: #FCA5A5; font-size: 13px; line-height: 1.5;
+      color: #DC2626; font-size: 13px; line-height: 1.5;
     }
 
     /* ─── Stats ─── */
@@ -161,7 +162,7 @@
     .stat-card {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 16px 14px;
-      transition: all 0.2s;
+      transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .stat-card:hover { border-color: var(--border-hover); }
     .stat-number { font-size: 26px; font-weight: 700; font-family: var(--font-mono); }
@@ -184,10 +185,11 @@
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-lg); padding: 18px 20px;
       cursor: pointer; transition: all 0.2s; border-left: 4px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .task-card:hover {
-      background: #1E2A40; transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      background: #F8FAFC; transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
     }
     .task-card.overdue { border-color: var(--accent-red) !important; }
     .task-card.complete { opacity: 0.6; }
@@ -219,6 +221,7 @@
     .detail-card {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .detail-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
     .detail-desc { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
@@ -249,7 +252,7 @@
     /* ─── Subtask ─── */
     .subtask-item {
       display: flex; align-items: center; gap: 10px;
-      padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+      padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.06);
     }
     .subtask-item input[type="checkbox"] { accent-color: var(--accent-green); width: 18px; height: 18px; cursor: pointer; }
     .subtask-text { flex: 1; font-size: 13px; }
@@ -259,10 +262,10 @@
     /* ─── Comments ─── */
     .comment-item {
       padding: 12px; border-radius: var(--radius-sm);
-      background: var(--bg-input); border: 1px solid rgba(255,255,255,0.03);
+      background: var(--bg-input); border: 1px solid rgba(0,0,0,0.06);
       margin-bottom: 10px;
     }
-    .comment-item.system { background: #131A2E; border-color: #1E2D50; }
+    .comment-item.system { background: #F0F4FF; border-color: #DBEAFE; }
     .comment-item.status { border-left: 3px solid var(--accent-blue); }
     .comment-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
     .comment-author { font-size: 12px; font-weight: 600; }
@@ -292,8 +295,8 @@
     .btn-primary { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); color: #fff; }
     .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.3); }
     .btn-secondary { background: var(--border); color: var(--text-primary); }
-    .btn-danger { background: #7F1D1D; color: #FCA5A5; }
-    .btn-danger:hover { background: #991B1B; }
+    .btn-danger { background: #FEE2E2; color: #DC2626; }
+    .btn-danger:hover { background: #FECACA; }
     .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text-secondary); }
     .btn-accept { background: var(--accent-green); color: #fff; }
     .btn-reject { background: var(--accent-red); color: #fff; }
@@ -311,14 +314,14 @@
       margin-top: 16px; padding: 14px; border-radius: var(--radius-sm);
       background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
     }
-    .reject-reason h5 { color: #FCA5A5; font-size: 12px; margin-bottom: 4px; }
-    .reject-reason p { color: #FDA4AF; font-size: 13px; }
+    .reject-reason h5 { color: #DC2626; font-size: 12px; margin-bottom: 4px; }
+    .reject-reason p { color: #B91C1C; font-size: 13px; }
 
     /* ─── User Management ─── */
     .user-row {
       display: flex; align-items: center; gap: 14px; padding: 12px 14px;
       background: var(--bg-input); border-radius: var(--radius-sm);
-      border: 1px solid rgba(255,255,255,0.03); margin-bottom: 8px;
+      border: 1px solid rgba(0,0,0,0.06); margin-bottom: 8px;
     }
     .user-row-avatar {
       width: 36px; height: 36px; border-radius: 50%;
@@ -546,7 +549,7 @@ function renderLogin() {
           callback: handleCredentialResponse,
         });
         google.accounts.id.renderButton(container, {
-          theme: "filled_black",
+          theme: "outline",
           size: "large",
           width: 300,
           text: "signin_with",
@@ -681,8 +684,8 @@ function renderDashboard() {
       const overdue = isOverdue(t.deadline) && t.status !== "complete";
       const subDone = (t.subtasks || []).filter(s => s.done).length;
       const subTotal = (t.subtasks || []).length;
-      const acceptBadge = t.accepted === false ? `<span class="badge" style="background:#7F1D1D;color:#FCA5A5">Declined</span>`
-        : t.accepted === null ? `<span class="badge" style="background:#78350F;color:#FDE68A">Pending</span>` : "";
+      const acceptBadge = t.accepted === false ? `<span class="badge" style="background:#FEE2E2;color:#DC2626">Declined</span>`
+        : t.accepted === null ? `<span class="badge" style="background:#FEF3C7;color:#92400E">Pending</span>` : "";
 
       tasksHtml += `
         <div class="task-card fade-up${overdue ? ' overdue' : ''}${t.status === 'complete' ? ' complete' : ''}"
@@ -693,7 +696,7 @@ function renderDashboard() {
               <div class="task-meta">
                 <span class="badge" style="background:${st.bg};color:${st.color}">${st.icon} ${st.label}</span>
                 <span class="badge" style="background:${pr.bg};color:${pr.color}">${pr.dot} ${pr.label}</span>
-                ${t.tag ? `<span class="badge" style="background:#1E3A5F;color:#60A5FA">${esc(t.tag)}</span>` : ""}
+                ${t.tag ? `<span class="badge" style="background:#DBEAFE;color:#1D4ED8">${esc(t.tag)}</span>` : ""}
                 ${acceptBadge}
               </div>
               <div class="task-title${t.status === 'complete' ? ' done' : ''}">${esc(t.title)}</div>
@@ -843,7 +846,7 @@ function renderDetail() {
           <div class="task-meta" style="margin-bottom:12px;">
             <span class="badge" style="background:${st.bg};color:${st.color}">${st.icon} ${st.label}</span>
             <span class="badge" style="background:${pr.bg};color:${pr.color}">${pr.dot} ${pr.label} Priority</span>
-            ${task.tag ? `<span class="badge" style="background:#1E3A5F;color:#60A5FA">${esc(task.tag)}</span>` : ""}
+            ${task.tag ? `<span class="badge" style="background:#DBEAFE;color:#1D4ED8">${esc(task.tag)}</span>` : ""}
           </div>
           <div class="detail-title">${esc(task.title)}</div>
           ${task.description ? `<div class="detail-desc">${esc(task.description)}</div>` : ""}
