@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab Task Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg-deep: #0C1220;<a href="lab-task-manager.html">Lab Task Manager</a>
+      --bg-primary: #111827;
+      --bg-card: #1A2235;
+      --bg-input: #0E1729;
+      --border: #283044;
+      --border-hover: #3B4A63;
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --text-dim: #475569;
+      --accent-blue: #3B82F6;
+      --accent-purple: #8B5CF6;
+      --accent-green: #10B981;
+      --accent-red: #EF4444;
+      --accent-amber: #F59E0B;
+      --accent-cyan: #06B6D4;
+      --font-body: 'DM Sans', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ─── Animations ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(40px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .fade-up { animation: fadeUp 0.4s ease both; }
+    .slide-in { animation: slideIn 0.3s ease both; }
+
+    /* ─── Layout ─── */
+    .app-container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+    
+    /* ─── Header ─── */
+    .header {
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      max-width: 1280px; margin: 0 auto; padding: 0 24px;
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 18px; font-weight: 700; letter-spacing: -0.02em;
+    }
+    .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .nav { display: flex; gap: 4px; }
+    .nav-btn {
+      background: none; border: none; color: var(--text-muted);
+      padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 13px; font-weight: 500; font-family: var(--font-body);
+      transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+    }
+    .nav-btn:hover { color: var(--text-secondary); background: rgba(255,255,255,0.04); }
+    .nav-btn.active { color: var(--text-primary); background: var(--border); }
+    .user-pill {
+      display: flex; align-items: center; gap: 10px;
+      padding: 4px 4px 4px 14px; border-radius: 100px;
+      background: var(--bg-card); border: 1px solid var(--border);
+    }
+    .user-pill span { font-size: 12px; color: var(--text-muted); }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%; object-fit: cover;
+      border: 2px solid var(--border);
+    }
+    .user-avatar-placeholder {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #fff;
+    }
+    .signout-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+      font-size: 12px; font-family: var(--font-body); margin-left: 8px;
+      transition: all 0.15s;
+    }
+    .signout-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
+
+    /* ─── Login Screen ─── */
+    .login-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 30% 20%, rgba(6,182,212,0.08), transparent 60%),
+                  radial-gradient(ellipse at 70% 80%, rgba(59,130,246,0.06), transparent 60%),
+                  var(--bg-deep);
+    }
+    .login-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 48px 44px;
+      max-width: 460px; width: 100%;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      animation: fadeUp 0.6s ease;
+    }
+    .login-card h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; }
+    .login-card .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 36px; line-height: 1.5; }
+    .google-btn {
+      width: 100%; padding: 14px 24px; border-radius: var(--radius-md);
+      background: #fff; color: #333; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 600; font-family: var(--font-body);
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .google-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .google-btn svg { width: 20px; height: 20px; }
+    .access-denied {
+      margin-top: 20px; padding: 16px; border-radius: var(--radius-md);
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      color: #FCA5A5; font-size: 13px; line-height: 1.5;
+    }
+
+    /* ─── Stats ─── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 16px 14px;
+      transition: all 0.2s;
+    }
+    .stat-card:hover { border-color: var(--border-hover); }
+    .stat-number { font-size: 26px; font-weight: 700; font-family: var(--font-mono); }
+    .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ─── Filters ─── */
+    .filters-bar {
+      display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-input, .filter-select {
+      background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary);
+      padding: 9px 14px; border-radius: var(--radius-sm); font-size: 13px;
+      font-family: var(--font-body); outline: none; transition: border-color 0.15s;
+    }
+    .filter-input:focus, .filter-select:focus { border-color: var(--accent-blue); }
+    .filter-input { width: 220px; }
+
+    /* ─── Task Card ─── */
+    .task-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px 20px;
+      cursor: pointer; transition: all 0.2s; border-left: 4px solid var(--border);
+    }
+    .task-card:hover {
+      background: #1E2A40; transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .task-card.overdue { border-color: var(--accent-red) !important; }
+    .task-card.complete { opacity: 0.6; }
+    .task-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .task-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .badge {
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    }
+    .task-title {
+      font-size: 15px; font-weight: 600; color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .task-title.done { text-decoration: line-through; opacity: 0.6; }
+    .task-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .task-right { text-align: right; flex-shrink: 0; }
+    .task-assignee { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+    .task-deadline { font-size: 12px; font-family: var(--font-mono); }
+    .task-subtask-count { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+    /* ─── Detail View ─── */
+    .back-btn {
+      background: none; border: none; color: var(--accent-blue); cursor: pointer;
+      font-size: 13px; font-family: var(--font-body); padding: 0; margin-bottom: 20px;
+      transition: color 0.15s;
+    }
+    .back-btn:hover { color: var(--accent-cyan); }
+    .detail-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+    .detail-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px;
+    }
+    .detail-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .detail-desc { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+    .detail-info { display: flex; gap: 24px; margin-top: 16px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; }
+    .detail-info strong { color: var(--text-secondary); }
+
+    .section-title {
+      font-size: 15px; font-weight: 600; margin-bottom: 14px;
+    }
+    .sidebar { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; }
+    .sidebar-title {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px;
+    }
+
+    /* ─── Status Buttons ─── */
+    .status-btn {
+      width: 100%; padding: 9px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--text-muted); cursor: pointer; font-size: 12px;
+      font-weight: 600; text-align: left; font-family: var(--font-body);
+      transition: all 0.15s; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status-btn:hover { border-color: var(--border-hover); }
+    .status-btn.active { border-width: 2px; }
+
+    /* ─── Subtask ─── */
+    .subtask-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .subtask-item input[type="checkbox"] { accent-color: var(--accent-green); width: 18px; height: 18px; cursor: pointer; }
+    .subtask-text { flex: 1; font-size: 13px; }
+    .subtask-text.done { color: var(--text-dim); text-decoration: line-through; }
+    .subtask-deadline { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); }
+
+    /* ─── Comments ─── */
+    .comment-item {
+      padding: 12px; border-radius: var(--radius-sm);
+      background: var(--bg-input); border: 1px solid rgba(255,255,255,0.03);
+      margin-bottom: 10px;
+    }
+    .comment-item.system { background: #131A2E; border-color: #1E2D50; }
+    .comment-item.status { border-left: 3px solid var(--accent-blue); }
+    .comment-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .comment-author { font-size: 12px; font-weight: 600; }
+    .comment-time { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); }
+    .comment-body { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* ─── Form Elements ─── */
+    .form-input, .form-select, .form-textarea {
+      width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+      color: var(--text-primary); padding: 10px 14px; border-radius: var(--radius-sm);
+      font-size: 13px; font-family: var(--font-body); outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent-blue); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block; }
+    .form-group { margin-bottom: 18px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .btn {
+      padding: 10px 24px; border-radius: var(--radius-sm); border: none;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      font-family: var(--font-body); transition: all 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); color: #fff; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.3); }
+    .btn-secondary { background: var(--border); color: var(--text-primary); }
+    .btn-danger { background: #7F1D1D; color: #FCA5A5; }
+    .btn-danger:hover { background: #991B1B; }
+    .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-accept { background: var(--accent-green); color: #fff; }
+    .btn-reject { background: var(--accent-red); color: #fff; }
+    .btn-small { padding: 6px 14px; font-size: 12px; }
+
+    .inline-row { display: flex; gap: 8px; align-items: center; }
+
+    /* ─── Accept/Reject Panel ─── */
+    .action-panel {
+      margin-top: 20px; padding: 18px; background: var(--bg-input);
+      border-radius: var(--radius-md); border: 1px solid var(--border);
+    }
+    .action-panel h4 { color: var(--accent-amber); font-size: 14px; margin-bottom: 12px; }
+    .reject-reason {
+      margin-top: 16px; padding: 14px; border-radius: var(--radius-sm);
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+    }
+    .reject-reason h5 { color: #FCA5A5; font-size: 12px; margin-bottom: 4px; }
+    .reject-reason p { color: #FDA4AF; font-size: 13px; }
+
+    /* ─── User Management ─── */
+    .user-row {
+      display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+      background: var(--bg-input); border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,0.03); margin-bottom: 8px;
+    }
+    .user-row-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .user-row-info { flex: 1; }
+    .user-row-name { font-size: 13px; font-weight: 600; }
+    .user-row-meta { font-size: 11px; color: var(--text-dim); }
+
+    /* ─── Empty state ─── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; color: var(--text-muted); }
+    .empty-state p { font-size: 13px; }
+
+    /* ─── Toast ─── */
+    .toast {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      background: var(--accent-green); color: #fff;
+      padding: 12px 24px; border-radius: var(--radius-sm);
+      font-size: 14px; font-weight: 500;
+      box-shadow: 0 10px 30px rgba(16,185,129,0.3);
+      animation: slideIn 0.3s ease;
+    }
+    .toast.error { background: var(--accent-red); box-shadow: 0 10px 30px rgba(239,68,68,0.3); }
+
+    /* ─── Loading ─── */
+    .loading-spinner {
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px; color: var(--text-muted); font-size: 14px; gap: 10px;
+    }
+    .spinner {
+      width: 20px; height: 20px; border: 2px solid var(--border);
+      border-top-color: var(--accent-blue); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 860px) {
+      .detail-grid { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .header-inner { padding: 0 16px; }
+      .app-container { padding: 0 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .nav-btn span.nav-label { display: none; }
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+      .filter-input { width: 100%; }
+      .filters-bar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURATION — Update these two values
+// ═══════════════════════════════════════════════════════════════
+
+// 1. Your Google Cloud OAuth Client ID
+//    Get this from: https://console.cloud.google.com/apis/credentials
+const GOOGLE_CLIENT_ID = "546817454008-47j2o77vff5kont4ekho4o8ign5t1j49.apps.googleusercontent.com";
+
+// 2. Your Google Apps Script Web App URL
+//    Get this after deploying the Apps Script
+const API_URL = "https://script.google.com/macros/s/AKfycbx8bdCs9gz_mjVOhciAkGtE0QXhUKRpOzVEfYOzt4J_2MM0f3PNsETfPxHOkjLsp5Lj/exec";
+
+// ═══════════════════════════════════════════════════════════════
+
+const app = document.getElementById("app");
+
+// ─── State ───
+let state = {
+  currentUser: null,
+  users: [],
+  tasks: [],
+  tags: [],
+  view: "dashboard",
+  selectedTaskId: null,
+  filterStatus: "all",
+  filterTag: "all",
+  filterAssignee: "all",
+  searchQuery: "",
+  loading: false,
+  error: null,
+  toast: null,
+};
+
+const STATUS_META = {
+  assigned:        { label: "Assigned",        color: "#E8A838", bg: "#FFF8EC", icon: "◈" },
+  initiated:       { label: "Initiated",       color: "#3B82F6", bg: "#EFF6FF", icon: "▶" },
+  onhold:          { label: "On Hold",         color: "#8B5CF6", bg: "#F5F3FF", icon: "⏸" },
+  troubleshooting: { label: "Troubleshooting", color: "#EF4444", bg: "#FEF2F2", icon: "⚠" },
+  complete:        { label: "Complete",        color: "#10B981", bg: "#ECFDF5", icon: "✓" },
+};
+const STATUSES = Object.keys(STATUS_META);
+const PRIORITIES = ["high", "medium", "low"];
+const PRIORITY_META = {
+  high:   { label: "High",   color: "#DC2626", bg: "#FEE2E2", dot: "🔴" },
+  medium: { label: "Medium", color: "#D97706", bg: "#FEF3C7", dot: "🟡" },
+  low:    { label: "Low",    color: "#059669", bg: "#D1FAE5", dot: "🟢" },
+};
+
+function setState(updates) {
+  Object.assign(state, updates);
+  render();
+}
+
+// ─── API Helpers ───
+async function apiCall(action, data = {}) {
+  try {
+    const url = `${API_URL}?action=${action}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(data),
+      redirect: "follow",
+    });
+    const result = await response.json();
+    if (result.error) {
+      showToast(result.error, true);
+      return null;
+    }
+    return result;
+  } catch (err) {
+    showToast("Network error: " + err.message, true);
+    return null;
+  }
+}
+
+function showToast(msg, isError = false) {
+  state.toast = { msg, isError };
+  render();
+  setTimeout(() => { state.toast = null; render(); }, 3500);
+}
+
+// ─── Google Sign-In ───
+function handleCredentialResponse(response) {
+  const payload = JSON.parse(atob(response.credential.split(".")[1]));
+  verifyAndLogin(payload.email, payload.name, payload.picture);
+}
+
+async function verifyAndLogin(email, name, picture) {
+  setState({ loading: true, error: null });
+  const result = await apiCall("verifyUser", { email });
+  if (result && result.success) {
+    state.currentUser = { ...result.user, picture };
+    await loadAllData();
+    setState({ loading: false, view: "dashboard" });
+  } else {
+    setState({
+      loading: false,
+      error: result?.error || `Access denied for ${email}. Contact your PI to be added.`
+    });
+  }
+}
+
+async function loadAllData() {
+  const [usersRes, tasksRes, tagsRes] = await Promise.all([
+    apiCall("getUsers"),
+    apiCall("getTasks", { email: state.currentUser.email }),
+    apiCall("getTags"),
+  ]);
+  if (usersRes?.users) state.users = usersRes.users;
+  if (tasksRes?.tasks) state.tasks = tasksRes.tasks;
+  if (tagsRes?.tags) state.tags = tagsRes.tags;
+}
+
+async function refreshTasks() {
+  const res = await apiCall("getTasks", { email: state.currentUser.email });
+  if (res?.tasks) setState({ tasks: res.tasks });
+}
+
+// ─── Utilities ───
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""; }
+function isOverdue(d) { return d && new Date(d) < new Date(); }
+function daysDiff(d) { return d ? Math.ceil((new Date(d) - new Date()) / 86400000) : null; }
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function canCreate() { return state.currentUser && (state.currentUser.role === "PI" || state.currentUser.role === "Lab Manager"); }
+function isAdmin() { return canCreate(); }
+
+// ─── Render ───
+function render() {
+  if (!state.currentUser) {
+    renderLogin();
+  } else {
+    renderApp();
+  }
+}
+
+// ─── Login Screen ───
+function renderLogin() {
+  app.innerHTML = `
+    <div class="login-screen">
+      <div class="login-card">
+        <div style="text-align:center; margin-bottom: 32px;">
+          <div style="font-size:44px; margin-bottom:12px;">🔬</div>
+          <h1>Lab Task Manager</h1>
+          <p class="subtitle">Sign in with your Google account to access your lab's task board. Only authorized accounts can log in.</p>
+        </div>
+        ${state.loading ? `
+          <div class="loading-spinner"><div class="spinner"></div> Verifying your account…</div>
+        ` : `
+          <div id="google-btn-container" style="display:flex; justify-content:center;"></div>
+        `}
+        ${state.error ? `<div class="access-denied">⚠ ${esc(state.error)}</div>` : ""}
+        <p style="color: var(--text-dim); font-size: 11px; text-align: center; margin-top: 28px; line-height: 1.5;">
+          Your role (PI / Lab Manager / Intern) is determined by<br>the email registered in the system by the PI.
+        </p>
+      </div>
+    </div>
+  `;
+
+  if (!state.loading) {
+    setTimeout(() => {
+      const container = document.getElementById("google-btn-container");
+      if (container && window.google) {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+        });
+        google.accounts.id.renderButton(container, {
+          theme: "filled_black",
+          size: "large",
+          width: 300,
+          text: "signin_with",
+          shape: "pill",
+        });
+      }
+    }, 100);
+  }
+}
+
+// ─── Main App ───
+function renderApp() {
+  const u = state.currentUser;
+  const roleGradient = u.role === "PI" ? "linear-gradient(135deg, #3B82F6, #8B5CF6)"
+    : u.role === "Lab Manager" ? "linear-gradient(135deg, #10B981, #3B82F6)"
+    : "linear-gradient(135deg, #F59E0B, #EF4444)";
+
+  let content = "";
+  if (state.view === "dashboard") content = renderDashboard();
+  else if (state.view === "detail") content = renderDetail();
+  else if (state.view === "create") content = renderCreateForm();
+  else if (state.view === "manage-users") content = renderManageUsers();
+
+  app.innerHTML = `
+    ${state.toast ? `<div class="toast${state.toast.isError ? ' error' : ''}">${esc(state.toast.msg)}</div>` : ""}
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <div class="logo-icon">🔬</div>
+          <span>LabTasks</span>
+        </div>
+        <nav class="nav">
+          <button class="nav-btn${state.view === 'dashboard' ? ' active' : ''}" onclick="navigate('dashboard')">◫ <span class="nav-label">Dashboard</span></button>
+          ${canCreate() ? `<button class="nav-btn${state.view === 'create' ? ' active' : ''}" onclick="navigate('create')">+ <span class="nav-label">New Task</span></button>` : ""}
+          ${isAdmin() ? `<button class="nav-btn${state.view === 'manage-users' ? ' active' : ''}" onclick="navigate('manage-users')">⊕ <span class="nav-label">Team</span></button>` : ""}
+          <button class="nav-btn" onclick="doRefresh()" title="Refresh data">↻ <span class="nav-label">Refresh</span></button>
+        </nav>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="user-pill">
+            <span>${esc(u.role)}</span>
+            ${u.picture
+              ? `<img src="${u.picture}" class="user-avatar" referrerpolicy="no-referrer" />`
+              : `<div class="user-avatar-placeholder" style="background:${roleGradient}">${esc(u.name[0])}</div>`
+            }
+          </div>
+          <button class="signout-btn" onclick="signOut()">Sign Out</button>
+        </div>
+      </div>
+    </header>
+    <div class="app-container" style="padding-top:24px; padding-bottom:60px;">
+      ${content}
+    </div>
+  `;
+}
+
+function navigate(view) {
+  setState({ view, selectedTaskId: null });
+}
+
+function signOut() {
+  state = { ...state, currentUser: null, users: [], tasks: [], tags: [], view: "dashboard", selectedTaskId: null, error: null };
+  render();
+}
+
+async function doRefresh() {
+  showToast("Refreshing…");
+  await loadAllData();
+  render();
+  showToast("Data refreshed");
+}
+
+// ─── Dashboard ───
+function renderDashboard() {
+  const tasks = getFilteredTasks();
+  const allMyTasks = state.tasks;
+  const interns = state.users.filter(u => u.role === "Intern");
+
+  const counts = {
+    all: allMyTasks.length,
+    overdue: allMyTasks.filter(t => isOverdue(t.deadline) && t.status !== "complete").length,
+  };
+  STATUSES.forEach(s => counts[s] = allMyTasks.filter(t => t.status === s).length);
+
+  const statsColors = {
+    all: "#60A5FA", overdue: "#EF4444",
+    assigned: "#E8A838", initiated: "#3B82F6", onhold: "#8B5CF6",
+    troubleshooting: "#EF4444", complete: "#10B981"
+  };
+
+  let statsHtml = "";
+  [{ key: "all", label: "Total" }, { key: "overdue", label: "Overdue" },
+   ...STATUSES.map(s => ({ key: s, label: STATUS_META[s].label }))
+  ].forEach(s => {
+    statsHtml += `<div class="stat-card" style="border-top: 3px solid ${statsColors[s.key]}">
+      <div class="stat-number" style="color:${statsColors[s.key]}">${counts[s.key]}</div>
+      <div class="stat-label">${s.label}</div>
+    </div>`;
+  });
+
+  let filtersHtml = `
+    <div class="filters-bar">
+      <input class="filter-input" placeholder="Search tasks…" value="${esc(state.searchQuery)}" oninput="state.searchQuery=this.value; render();" />
+      <select class="filter-select" onchange="state.filterStatus=this.value; render();">
+        <option value="all"${state.filterStatus==='all'?' selected':''}>All Statuses</option>
+        ${STATUSES.map(s => `<option value="${s}"${state.filterStatus===s?' selected':''}>${STATUS_META[s].label}</option>`).join("")}
+      </select>
+      <select class="filter-select" onchange="state.filterTag=this.value; render();">
+        <option value="all"${state.filterTag==='all'?' selected':''}>All Projects</option>
+        ${state.tags.map(t => `<option value="${esc(t)}"${state.filterTag===t?' selected':''}>${esc(t)}</option>`).join("")}
+      </select>
+      ${isAdmin() ? `
+      <select class="filter-select" onchange="state.filterAssignee=this.value; render();">
+        <option value="all"${state.filterAssignee==='all'?' selected':''}>All Assignees</option>
+        ${interns.map(u => `<option value="${esc(u.email)}"${state.filterAssignee===u.email?' selected':''}>${esc(u.name)}</option>`).join("")}
+      </select>` : ""}
+    </div>
+  `;
+
+  let tasksHtml = "";
+  if (tasks.length === 0) {
+    tasksHtml = `<div class="empty-state fade-up"><div class="icon">📋</div><h3>No tasks found</h3><p>${canCreate() ? "Create your first task to get started" : "No tasks assigned to you yet"}</p></div>`;
+  } else {
+    tasks.sort((a, b) => {
+      const po = { high: 0, medium: 1, low: 2 };
+      if (a.status === "complete" && b.status !== "complete") return 1;
+      if (b.status === "complete" && a.status !== "complete") return -1;
+      return po[a.priority] - po[b.priority];
+    }).forEach((t, i) => {
+      const assignee = state.users.find(u => u.email === t.assignee);
+      const st = STATUS_META[t.status] || STATUS_META.assigned;
+      const pr = PRIORITY_META[t.priority] || PRIORITY_META.medium;
+      const overdue = isOverdue(t.deadline) && t.status !== "complete";
+      const subDone = (t.subtasks || []).filter(s => s.done).length;
+      const subTotal = (t.subtasks || []).length;
+      const acceptBadge = t.accepted === false ? `<span class="badge" style="background:#7F1D1D;color:#FCA5A5">Declined</span>`
+        : t.accepted === null ? `<span class="badge" style="background:#78350F;color:#FDE68A">Pending</span>` : "";
+
+      tasksHtml += `
+        <div class="task-card fade-up${overdue ? ' overdue' : ''}${t.status === 'complete' ? ' complete' : ''}"
+             style="border-left-color:${st.color}; animation-delay:${i * 0.04}s"
+             onclick="openTask('${t.id}')">
+          <div class="task-header">
+            <div style="flex:1; min-width:0;">
+              <div class="task-meta">
+                <span class="badge" style="background:${st.bg};color:${st.color}">${st.icon} ${st.label}</span>
+                <span class="badge" style="background:${pr.bg};color:${pr.color}">${pr.dot} ${pr.label}</span>
+                ${t.tag ? `<span class="badge" style="background:#1E3A5F;color:#60A5FA">${esc(t.tag)}</span>` : ""}
+                ${acceptBadge}
+              </div>
+              <div class="task-title${t.status === 'complete' ? ' done' : ''}">${esc(t.title)}</div>
+              ${t.description ? `<div class="task-desc">${esc(t.description)}</div>` : ""}
+            </div>
+            <div class="task-right">
+              ${assignee ? `<div class="task-assignee">→ ${esc(assignee.name.split(" ")[0])}</div>` : ""}
+              ${t.deadline ? `<div class="task-deadline" style="color:${overdue ? '#EF4444' : daysDiff(t.deadline) <= 3 ? '#F59E0B' : '#64748B'}">${overdue ? '⚠ Overdue' : '📅 ' + fmtDate(t.deadline)}</div>` : ""}
+              ${subTotal > 0 ? `<div class="task-subtask-count">✓ ${subDone}/${subTotal} subtasks</div>` : ""}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  return `<div class="stats-grid fade-up">${statsHtml}</div>${filtersHtml}<div style="display:flex;flex-direction:column;gap:10px;">${tasksHtml}</div>`;
+}
+
+function getFilteredTasks() {
+  return state.tasks.filter(t => {
+    if (state.filterStatus !== "all" && t.status !== state.filterStatus) return false;
+    if (state.filterTag !== "all" && t.tag !== state.filterTag) return false;
+    if (state.filterAssignee !== "all" && t.assignee !== state.filterAssignee) return false;
+    if (state.searchQuery) {
+      const q = state.searchQuery.toLowerCase();
+      return (t.title || "").toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q);
+    }
+    return true;
+  });
+}
+
+function openTask(id) {
+  setState({ view: "detail", selectedTaskId: id });
+}
+
+// ─── Task Detail ───
+function renderDetail() {
+  const task = state.tasks.find(t => t.id === state.selectedTaskId);
+  if (!task) return `<div class="empty-state"><p>Task not found. <button class="btn btn-ghost" onclick="navigate('dashboard')">Go back</button></p></div>`;
+
+  const assignee = state.users.find(u => u.email === task.assignee);
+  const creator = state.users.find(u => u.email === task.createdBy);
+  const st = STATUS_META[task.status] || STATUS_META.assigned;
+  const pr = PRIORITY_META[task.priority] || PRIORITY_META.medium;
+  const isAssignee = state.currentUser.email === task.assignee;
+  const overdue = isOverdue(task.deadline) && task.status !== "complete";
+  const interns = state.users.filter(u => u.role === "Intern");
+
+  // Acceptance panel
+  let acceptanceHtml = "";
+  if (isAssignee && task.accepted === null) {
+    acceptanceHtml = `
+      <div class="action-panel">
+        <h4>⏳ This task is awaiting your response</h4>
+        <div class="inline-row">
+          <button class="btn btn-accept" onclick="acceptTask('${task.id}')">✓ Accept Task</button>
+          <button class="btn btn-reject" onclick="document.getElementById('reject-panel').style.display='block'">✗ Decline</button>
+        </div>
+        <div id="reject-panel" style="display:none; margin-top:12px;">
+          <textarea id="reject-reason" class="form-textarea" placeholder="Reason for declining…" style="min-height:60px;"></textarea>
+          <button class="btn btn-danger btn-small" style="margin-top:8px;" onclick="rejectTask('${task.id}')">Submit Reason & Decline</button>
+        </div>
+      </div>
+    `;
+  }
+  if (task.accepted === false && task.rejectionReason) {
+    acceptanceHtml += `<div class="reject-reason"><h5>Decline Reason:</h5><p>${esc(task.rejectionReason)}</p></div>`;
+  }
+
+  // Subtasks
+  const subDone = (task.subtasks || []).filter(s => s.done).length;
+  const subTotal = (task.subtasks || []).length;
+  let subtasksHtml = (task.subtasks || []).map((s, i) => `
+    <div class="subtask-item">
+      <input type="checkbox" ${s.done ? "checked" : ""} onchange="toggleSubtask('${task.id}', ${i})" ${isAssignee || canCreate() ? "" : "disabled"} />
+      <span class="subtask-text${s.done ? ' done' : ''}">${esc(s.title)}</span>
+    </div>
+  `).join("");
+  if (isAssignee || canCreate()) {
+    subtasksHtml += `
+      <div class="inline-row" style="margin-top:12px;">
+        <input id="new-subtask" class="form-input" placeholder="Add subtask…" style="flex:1" onkeydown="if(event.key==='Enter')addSubtask('${task.id}')" />
+        <button class="btn btn-secondary btn-small" onclick="addSubtask('${task.id}')">Add</button>
+      </div>
+    `;
+  }
+
+  // Comments
+  let commentsHtml = "";
+  if ((task.comments || []).length === 0) {
+    commentsHtml = `<div style="color:var(--text-dim);font-size:13px;text-align:center;padding:20px;">No activity yet</div>`;
+  } else {
+    (task.comments || []).forEach(c => {
+      const cu = state.users.find(u => u.email === c.user);
+      const typeClass = c.type === "system" ? " system" : c.type === "status" ? " status" : "";
+      const authorColor = c.type === "status" ? "var(--accent-blue)" : c.type === "system" ? "var(--accent-purple)" : "var(--text-secondary)";
+      commentsHtml += `
+        <div class="comment-item${typeClass}">
+          <div class="comment-header">
+            <span class="comment-author" style="color:${authorColor}">${esc(cu?.name || c.user)}${c.type === "status" ? " · Status Update" : c.type === "system" ? " · System" : ""}</span>
+            <span class="comment-time">${new Date(c.time).toLocaleString()}</span>
+          </div>
+          <div class="comment-body">${esc(c.text)}</div>
+        </div>
+      `;
+    });
+  }
+
+  // Status buttons
+  let statusBtns = STATUSES.map(s => {
+    const sm = STATUS_META[s];
+    const isActive = task.status === s;
+    return `<button class="status-btn${isActive ? ' active' : ''}" style="${isActive ? `background:${sm.bg};color:${sm.color};border-color:${sm.color}` : ''}" onclick="changeStatus('${task.id}','${s}')">${sm.icon} ${sm.label}</button>`;
+  }).join("");
+
+  // Admin sidebar
+  let adminHtml = "";
+  if (canCreate()) {
+    adminHtml = `
+      <div class="detail-card">
+        <div class="sidebar-title">Admin Actions</div>
+        <div class="form-group">
+          <select class="form-select" onchange="reassignTask('${task.id}', this.value)">
+            <option value="">Reassign to…</option>
+            ${interns.map(u => `<option value="${esc(u.email)}"${task.assignee === u.email ? ' selected' : ''}>${esc(u.name)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <select class="form-select" onchange="changePriority('${task.id}', this.value)">
+            ${PRIORITIES.map(p => `<option value="${p}"${task.priority === p ? ' selected' : ''}>${PRIORITY_META[p].label} Priority</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <input type="date" class="form-input" value="${task.deadline || ''}" onchange="changeDeadline('${task.id}', this.value)" />
+        </div>
+        <button class="btn btn-danger" style="width:100%;" onclick="deleteTask('${task.id}')">🗑 Delete Task</button>
+      </div>
+    `;
+  }
+
+  return `
+    <button class="back-btn" onclick="navigate('dashboard')">← Back to Dashboard</button>
+    <div class="detail-grid fade-up">
+      <div>
+        <div class="detail-card">
+          <div class="task-meta" style="margin-bottom:12px;">
+            <span class="badge" style="background:${st.bg};color:${st.color}">${st.icon} ${st.label}</span>
+            <span class="badge" style="background:${pr.bg};color:${pr.color}">${pr.dot} ${pr.label} Priority</span>
+            ${task.tag ? `<span class="badge" style="background:#1E3A5F;color:#60A5FA">${esc(task.tag)}</span>` : ""}
+          </div>
+          <div class="detail-title">${esc(task.title)}</div>
+          ${task.description ? `<div class="detail-desc">${esc(task.description)}</div>` : ""}
+          <div class="detail-info">
+            <span>Created by: <strong>${esc(creator?.name || task.createdBy)}</strong></span>
+            <span>Assigned to: <strong>${esc(assignee?.name || task.assignee || "Unassigned")}</strong></span>
+            ${task.deadline ? `<span>Due: <strong style="color:${overdue ? 'var(--accent-red)' : 'inherit'}">${fmtDate(task.deadline)}</strong></span>` : ""}
+            <span>Acceptance: <strong style="color:${task.accepted === true ? 'var(--accent-green)' : task.accepted === false ? 'var(--accent-red)' : 'var(--accent-amber)'}">${task.accepted === true ? 'Accepted' : task.accepted === false ? 'Declined' : 'Pending'}</strong></span>
+          </div>
+          ${acceptanceHtml}
+        </div>
+
+        <div class="detail-card">
+          <div class="section-title">Subtasks (${subDone}/${subTotal})</div>
+          ${subtasksHtml}
+        </div>
+
+        <div class="detail-card">
+          <div class="section-title">Activity & Comments</div>
+          <div style="max-height:400px;overflow-y:auto;margin-bottom:16px;">${commentsHtml}</div>
+          ${isAssignee ? `
+          <div style="margin-bottom:12px;">
+            <textarea id="status-update" class="form-textarea" placeholder="Post a status update…" style="min-height:50px;"></textarea>
+            <button class="btn btn-primary btn-small" style="margin-top:6px;" onclick="postUpdate('${task.id}')">Post Update</button>
+          </div>` : ""}
+          <textarea id="comment-input" class="form-textarea" placeholder="Write a comment…" style="min-height:50px;"></textarea>
+          <button class="btn btn-secondary btn-small" style="margin-top:6px;" onclick="postComment('${task.id}')">Comment</button>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        ${isAssignee || canCreate() ? `
+        <div class="detail-card">
+          <div class="sidebar-title">Update Status</div>
+          ${statusBtns}
+        </div>` : ""}
+        ${adminHtml}
+      </div>
+    </div>
+  `;
+}
+
+// ─── Task Actions ───
+async function acceptTask(id) {
+  const task = state.tasks.find(t => t.id === id);
+  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: "Accepted the task", time: new Date().toISOString(), type: "system" }];
+  await apiCall("updateTask", { taskId: id, userEmail: state.currentUser.email, accepted: true, comments });
+  await refreshTasks();
+  showToast("Task accepted");
+  render();
+}
+
+async function rejectTask(id) {
+  const reason = document.getElementById("reject-reason")?.value || "";
+  const task = state.tasks.find(t => t.id === id);
+  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: `Declined task: ${reason}`, time: new Date().toISOString(), type: "system" }];
+  await apiCall("updateTask", { taskId: id, userEmail: state.currentUser.email, accepted: false, rejectionReason: reason, comments });
+  await refreshTasks();
+  showToast("Task declined");
+  render();
+}
+
+async function changeStatus(id, status) {
+  const task = state.tasks.find(t => t.id === id);
+  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: `Changed status to ${STATUS_META[status].label}`, time: new Date().toISOString(), type: "system" }];
+  await apiCall("updateTask", { taskId: id, userEmail: state.currentUser.email, status, comments });
+  await refreshTasks();
+  showToast(`Status → ${STATUS_META[status].label}`);
+  render();
+}
+
+async function toggleSubtask(taskId, index) {
+  const task = state.tasks.find(t => t.id === taskId);
+  const subtasks = [...(task.subtasks || [])];
+  subtasks[index] = { ...subtasks[index], done: !subtasks[index].done };
+  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, subtasks });
+  await refreshTasks();
+  render();
+}
+
+async function addSubtask(taskId) {
+  const input = document.getElementById("new-subtask");
+  if (!input?.value.trim()) return;
+  const task = state.tasks.find(t => t.id === taskId);
+  const subtasks = [...(task.subtasks || []), { id: Date.now().toString(36), title: input.value.trim(), done: false }];
+  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, subtasks });
+  await refreshTasks();
+  render();
+}
+
+async function postUpdate(taskId) {
+  const el = document.getElementById("status-update");
+  if (!el?.value.trim()) return;
+  const task = state.tasks.find(t => t.id === taskId);
+  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: el.value.trim(), time: new Date().toISOString(), type: "status" }];
+  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, comments });
+  await refreshTasks();
+  showToast("Update posted");
+  render();
+}
+
+async function postComment(taskId) {
+  const el = document.getElementById("comment-input");
+  if (!el?.value.trim()) return;
+  const task = state.tasks.find(t => t.id === taskId);
+  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: el.value.trim(), time: new Date().toISOString(), type: "comment" }];
+  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, comments });
+  await refreshTasks();
+  showToast("Comment added");
+  render();
+}
+
+async function reassignTask(taskId, email) {
+  if (!email) return;
+  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, assignee: email, accepted: null });
+  await refreshTasks();
+  showToast("Task reassigned");
+  render();
+}
+
+async function changePriority(taskId, priority) {
+  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, priority });
+  await refreshTasks();
+  render();
+}
+
+async function changeDeadline(taskId, deadline) {
+  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, deadline });
+  await refreshTasks();
+  render();
+}
+
+async function deleteTask(taskId) {
+  if (!confirm("Delete this task permanently?")) return;
+  await apiCall("deleteTask", { taskId });
+  setState({ view: "dashboard", selectedTaskId: null });
+  await refreshTasks();
+  showToast("Task deleted");
+  render();
+}
+
+// ─── Create Task Form ───
+function renderCreateForm() {
+  const interns = state.users.filter(u => u.role === "Intern");
+  return `
+    <button class="back-btn" onclick="navigate('dashboard')">← Back</button>
+    <div class="detail-card fade-up" style="max-width:640px;margin:0 auto;">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:24px;">Create New Task</h2>
+      <div class="form-group">
+        <label class="form-label">Task Title *</label>
+        <input id="ct-title" class="form-input" placeholder="e.g., Run XRD analysis on Sample Batch #12" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="ct-desc" class="form-textarea" placeholder="Detailed instructions, protocols, expected outcomes…"></textarea>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Assign To *</label>
+          <select id="ct-assignee" class="form-select">
+            <option value="">Select intern…</option>
+            ${interns.map(u => `<option value="${esc(u.email)}">${esc(u.name)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select id="ct-priority" class="form-select">
+            ${PRIORITIES.map(p => `<option value="${p}"${p === 'medium' ? ' selected' : ''}>${PRIORITY_META[p].label}</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Project / Category</label>
+          <select id="ct-tag" class="form-select">
+            <option value="">Select project…</option>
+            ${state.tags.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline</label>
+          <input id="ct-deadline" type="date" class="form-input" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Subtasks</label>
+        <div id="ct-subtasks-list"></div>
+        <div class="inline-row">
+          <input id="ct-subtask-input" class="form-input" placeholder="Add a subtask…" style="flex:1" onkeydown="if(event.key==='Enter')addCreateSubtask()" />
+          <button class="btn btn-secondary btn-small" onclick="addCreateSubtask()">Add</button>
+        </div>
+      </div>
+      <div class="inline-row" style="margin-top:8px;">
+        <button class="btn btn-primary" onclick="submitCreateTask()">Create Task</button>
+        <button class="btn btn-ghost" onclick="navigate('dashboard')">Cancel</button>
+      </div>
+    </div>
+  `;
+}
+
+let createSubtasks = [];
+
+function addCreateSubtask() {
+  const input = document.getElementById("ct-subtask-input");
+  if (!input?.value.trim()) return;
+  createSubtasks.push({ id: Date.now().toString(36), title: input.value.trim(), done: false });
+  input.value = "";
+  const list = document.getElementById("ct-subtasks-list");
+  if (list) {
+    list.innerHTML = createSubtasks.map((s, i) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="flex:1;font-size:13px;color:var(--text-secondary);padding:6px 10px;background:var(--bg-input);border-radius:6px;">${i + 1}. ${esc(s.title)}</span>
+        <button onclick="createSubtasks.splice(${i},1);addCreateSubtask.__proto__=null;document.getElementById('ct-subtask-input').value=' ';document.getElementById('ct-subtask-input').value='';" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:16px;">×</button>
+      </div>
+    `).join("");
+  }
+}
+
+async function submitCreateTask() {
+  const title = document.getElementById("ct-title")?.value;
+  const description = document.getElementById("ct-desc")?.value;
+  const assignee = document.getElementById("ct-assignee")?.value;
+  const priority = document.getElementById("ct-priority")?.value || "medium";
+  const tag = document.getElementById("ct-tag")?.value || "";
+  const deadline = document.getElementById("ct-deadline")?.value || "";
+
+  if (!title?.trim() || !assignee) {
+    showToast("Title and assignee are required", true);
+    return;
+  }
+
+  const result = await apiCall("createTask", {
+    title: title.trim(), description: description?.trim() || "",
+    assignee, priority, tag, deadline,
+    subtasks: createSubtasks,
+    createdBy: state.currentUser.email,
+  });
+
+  if (result?.success) {
+    createSubtasks = [];
+    await refreshTasks();
+    showToast("Task created!");
+    navigate("dashboard");
+  }
+}
+
+// ─── Manage Users ───
+function renderManageUsers() {
+  const roleGradients = {
+    PI: "linear-gradient(135deg, #3B82F6, #8B5CF6)",
+    "Lab Manager": "linear-gradient(135deg, #10B981, #3B82F6)",
+    Intern: "linear-gradient(135deg, #F59E0B, #EF4444)",
+  };
+
+  let userListHtml = state.users.map(u => `
+    <div class="user-row">
+      <div class="user-row-avatar" style="background:${roleGradients[u.role] || roleGradients.Intern}">${esc(u.name[0])}</div>
+      <div class="user-row-info">
+        <div class="user-row-name">${esc(u.name)}</div>
+        <div class="user-row-meta">${esc(u.role)} · ${esc(u.email)}</div>
+      </div>
+      ${u.role === "Intern" ? `<button class="btn btn-danger btn-small" onclick="removeUser('${esc(u.email)}')">Remove</button>` : ""}
+    </div>
+  `).join("");
+
+  return `
+    <div style="max-width:640px;margin:0 auto;" class="fade-up">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:20px;">Manage Team</h2>
+      <div class="detail-card">
+        <div class="section-title">Add Team Member</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Full Name</label><input id="mu-name" class="form-input" placeholder="Jane Doe" /></div>
+          <div class="form-group"><label class="form-label">Google Account Email</label><input id="mu-email" class="form-input" placeholder="jane@university.edu" /></div>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <select id="mu-role" class="form-select">
+              <option value="Intern">Intern</option>
+              <option value="Lab Manager">Lab Manager</option>
+            </select>
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;">
+            <button class="btn btn-primary" style="width:100%;" onclick="addNewUser()">Add Member</button>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:12px;line-height:1.5;">
+          ⓘ Use their exact Google account email. They must sign in with this email to access the system.
+        </p>
+      </div>
+      <div class="detail-card" style="margin-top:16px;">
+        <div class="section-title">Current Team (${state.users.length})</div>
+        ${userListHtml}
+      </div>
+    </div>
+  `;
+}
+
+async function addNewUser() {
+  const name = document.getElementById("mu-name")?.value;
+  const email = document.getElementById("mu-email")?.value;
+  const role = document.getElementById("mu-role")?.value || "Intern";
+  if (!name?.trim() || !email?.trim()) { showToast("Name and email required", true); return; }
+
+  const result = await apiCall("addUser", { name: name.trim(), email: email.trim(), role, requesterEmail: state.currentUser.email });
+  if (result?.success) {
+    const usersRes = await apiCall("getUsers");
+    if (usersRes?.users) state.users = usersRes.users;
+    showToast("Team member added!");
+    render();
+  }
+}
+
+async function removeUser(email) {
+  if (!confirm(`Remove ${email} from the team?`)) return;
+  const result = await apiCall("removeUser", { email });
+  if (result?.success) {
+    const usersRes = await apiCall("getUsers");
+    if (usersRes?.users) state.users = usersRes.users;
+    showToast("Team member removed");
+    render();
+  }
+}
+
+// ─── Init ───
+render();
+</script>
+</body>
+</html>
