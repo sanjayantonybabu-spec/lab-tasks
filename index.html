@@ -411,6 +411,7 @@ let state = {
   filterAssignee: "all",
   searchQuery: "",
   loading: false,
+  syncing: 0, // counter of in-flight API calls
   error: null,
   toast: null,
 };
@@ -430,9 +431,28 @@ const PRIORITY_META = {
   low:    { label: "Low",    color: "#059669", bg: "#D1FAE5", dot: "🟢" },
 };
 
+let autoRefreshTimer = null;
+const AUTO_REFRESH_INTERVAL = 30000; // 30 seconds
+
 function setState(updates) {
   Object.assign(state, updates);
   render();
+}
+
+// ─── Syncing indicator ───
+function startSync() {
+  state.syncing++;
+  updateSyncIndicator();
+}
+function endSync() {
+  state.syncing = Math.max(0, state.syncing - 1);
+  updateSyncIndicator();
+}
+function updateSyncIndicator() {
+  const el = document.getElementById("sync-indicator");
+  if (el) {
+    el.style.opacity = state.syncing > 0 ? "1" : "0";
+  }
 }
 
 // ─── API Helpers ───
@@ -457,10 +477,26 @@ async function apiCall(action, data = {}) {
   }
 }
 
+// Fire-and-forget API call with sync indicator (for optimistic updates)
+function apiCallBackground(action, data = {}) {
+  startSync();
+  apiCall(action, data).then(result => {
+    endSync();
+    if (!result) {
+      // Server rejected — do a full refresh to get correct state
+      showToast("Sync failed — refreshing…", true);
+      silentRefresh();
+    }
+  }).catch(() => {
+    endSync();
+    silentRefresh();
+  });
+}
+
 function showToast(msg, isError = false) {
   state.toast = { msg, isError };
   render();
-  setTimeout(() => { state.toast = null; render(); }, 3500);
+  setTimeout(() => { state.toast = null; render(); }, 3000);
 }
 
 // ─── Google Sign-In ───
@@ -476,6 +512,7 @@ async function verifyAndLogin(email, name, picture) {
     state.currentUser = { ...result.user, picture };
     await loadAllData();
     setState({ loading: false, view: "dashboard" });
+    startAutoRefresh();
   } else {
     setState({
       loading: false,
@@ -495,9 +532,33 @@ async function loadAllData() {
   if (tagsRes?.tags) state.tags = tagsRes.tags;
 }
 
-async function refreshTasks() {
+// Silent refresh — doesn't show toast, just syncs in background
+async function silentRefresh() {
+  if (!state.currentUser) return;
+  startSync();
   const res = await apiCall("getTasks", { email: state.currentUser.email });
-  if (res?.tasks) setState({ tasks: res.tasks });
+  endSync();
+  if (res?.tasks) {
+    state.tasks = res.tasks;
+    render();
+  }
+}
+
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    if (state.syncing === 0) silentRefresh();
+  }, AUTO_REFRESH_INTERVAL);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+}
+
+// ─── Optimistic task update helper ───
+function optimisticUpdateTask(taskId, changes) {
+  state.tasks = state.tasks.map(t => t.id === taskId ? { ...t, ...changes } : t);
+  render();
 }
 
 // ─── Utilities ───
@@ -575,6 +636,7 @@ function renderApp() {
 
   app.innerHTML = `
     ${state.toast ? `<div class="toast${state.toast.isError ? ' error' : ''}">${esc(state.toast.msg)}</div>` : ""}
+    <div id="sync-indicator" style="position:fixed;top:0;left:0;right:0;height:3px;z-index:9999;opacity:${state.syncing > 0 ? '1' : '0'};transition:opacity 0.3s;background:linear-gradient(90deg,transparent,var(--accent-blue),transparent);background-size:200% 100%;animation:shimmer 1.5s infinite linear;"></div>
     <header class="header">
       <div class="header-inner">
         <div class="logo">
@@ -610,13 +672,16 @@ function navigate(view) {
 }
 
 function signOut() {
-  state = { ...state, currentUser: null, users: [], tasks: [], tags: [], view: "dashboard", selectedTaskId: null, error: null };
+  stopAutoRefresh();
+  state = { ...state, currentUser: null, users: [], tasks: [], tags: [], view: "dashboard", selectedTaskId: null, error: null, syncing: 0 };
   render();
 }
 
 async function doRefresh() {
   showToast("Refreshing…");
+  startSync();
   await loadAllData();
+  endSync();
   render();
   showToast("Data refreshed");
 }
@@ -889,103 +954,101 @@ function renderDetail() {
   `;
 }
 
-// ─── Task Actions ───
-async function acceptTask(id) {
+// ─── Task Actions (Optimistic) ───
+function acceptTask(id) {
   const task = state.tasks.find(t => t.id === id);
-  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: "Accepted the task", time: new Date().toISOString(), type: "system" }];
-  await apiCall("updateTask", { taskId: id, userEmail: state.currentUser.email, accepted: true, comments });
-  await refreshTasks();
+  const newComment = { id: Date.now().toString(36), user: state.currentUser.email, text: "Accepted the task", time: new Date().toISOString(), type: "system" };
+  const comments = [...(task.comments || []), newComment];
+  // Instant UI update
+  optimisticUpdateTask(id, { accepted: true, comments });
   showToast("Task accepted");
-  render();
+  // Background sync
+  apiCallBackground("updateTask", { taskId: id, userEmail: state.currentUser.email, accepted: true, comments });
 }
 
-async function rejectTask(id) {
+function rejectTask(id) {
   const reason = document.getElementById("reject-reason")?.value || "";
   const task = state.tasks.find(t => t.id === id);
-  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: `Declined task: ${reason}`, time: new Date().toISOString(), type: "system" }];
-  await apiCall("updateTask", { taskId: id, userEmail: state.currentUser.email, accepted: false, rejectionReason: reason, comments });
-  await refreshTasks();
+  const newComment = { id: Date.now().toString(36), user: state.currentUser.email, text: `Declined task: ${reason}`, time: new Date().toISOString(), type: "system" };
+  const comments = [...(task.comments || []), newComment];
+  optimisticUpdateTask(id, { accepted: false, rejectionReason: reason, comments });
   showToast("Task declined");
-  render();
+  apiCallBackground("updateTask", { taskId: id, userEmail: state.currentUser.email, accepted: false, rejectionReason: reason, comments });
 }
 
-async function changeStatus(id, status) {
+function changeStatus(id, status) {
   const task = state.tasks.find(t => t.id === id);
-  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: `Changed status to ${STATUS_META[status].label}`, time: new Date().toISOString(), type: "system" }];
-  await apiCall("updateTask", { taskId: id, userEmail: state.currentUser.email, status, comments });
-  await refreshTasks();
+  const newComment = { id: Date.now().toString(36), user: state.currentUser.email, text: `Changed status to ${STATUS_META[status].label}`, time: new Date().toISOString(), type: "system" };
+  const comments = [...(task.comments || []), newComment];
+  optimisticUpdateTask(id, { status, comments });
   showToast(`Status → ${STATUS_META[status].label}`);
-  render();
+  apiCallBackground("updateTask", { taskId: id, userEmail: state.currentUser.email, status, comments });
 }
 
-async function toggleSubtask(taskId, index) {
+function toggleSubtask(taskId, index) {
   const task = state.tasks.find(t => t.id === taskId);
   const subtasks = [...(task.subtasks || [])];
   subtasks[index] = { ...subtasks[index], done: !subtasks[index].done };
-  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, subtasks });
-  await refreshTasks();
-  render();
+  optimisticUpdateTask(taskId, { subtasks });
+  apiCallBackground("updateTask", { taskId, userEmail: state.currentUser.email, subtasks });
 }
 
-async function addSubtask(taskId) {
+function addSubtask(taskId) {
   const input = document.getElementById("new-subtask");
   if (!input?.value.trim()) return;
   const task = state.tasks.find(t => t.id === taskId);
   const subtasks = [...(task.subtasks || []), { id: Date.now().toString(36), title: input.value.trim(), done: false }];
-  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, subtasks });
-  await refreshTasks();
-  render();
+  optimisticUpdateTask(taskId, { subtasks });
+  apiCallBackground("updateTask", { taskId, userEmail: state.currentUser.email, subtasks });
 }
 
-async function postUpdate(taskId) {
+function postUpdate(taskId) {
   const el = document.getElementById("status-update");
   if (!el?.value.trim()) return;
   const task = state.tasks.find(t => t.id === taskId);
-  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: el.value.trim(), time: new Date().toISOString(), type: "status" }];
-  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, comments });
-  await refreshTasks();
+  const newComment = { id: Date.now().toString(36), user: state.currentUser.email, text: el.value.trim(), time: new Date().toISOString(), type: "status" };
+  const comments = [...(task.comments || []), newComment];
+  optimisticUpdateTask(taskId, { comments });
   showToast("Update posted");
-  render();
+  apiCallBackground("updateTask", { taskId, userEmail: state.currentUser.email, comments });
 }
 
-async function postComment(taskId) {
+function postComment(taskId) {
   const el = document.getElementById("comment-input");
   if (!el?.value.trim()) return;
   const task = state.tasks.find(t => t.id === taskId);
-  const comments = [...(task.comments || []), { id: Date.now().toString(36), user: state.currentUser.email, text: el.value.trim(), time: new Date().toISOString(), type: "comment" }];
-  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, comments });
-  await refreshTasks();
+  const newComment = { id: Date.now().toString(36), user: state.currentUser.email, text: el.value.trim(), time: new Date().toISOString(), type: "comment" };
+  const comments = [...(task.comments || []), newComment];
+  optimisticUpdateTask(taskId, { comments });
   showToast("Comment added");
-  render();
+  apiCallBackground("updateTask", { taskId, userEmail: state.currentUser.email, comments });
 }
 
-async function reassignTask(taskId, email) {
+function reassignTask(taskId, email) {
   if (!email) return;
-  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, assignee: email, accepted: null });
-  await refreshTasks();
+  optimisticUpdateTask(taskId, { assignee: email, accepted: null });
   showToast("Task reassigned");
-  render();
+  apiCallBackground("updateTask", { taskId, userEmail: state.currentUser.email, assignee: email, accepted: null });
 }
 
-async function changePriority(taskId, priority) {
-  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, priority });
-  await refreshTasks();
-  render();
+function changePriority(taskId, priority) {
+  optimisticUpdateTask(taskId, { priority });
+  apiCallBackground("updateTask", { taskId, userEmail: state.currentUser.email, priority });
 }
 
-async function changeDeadline(taskId, deadline) {
-  await apiCall("updateTask", { taskId, userEmail: state.currentUser.email, deadline });
-  await refreshTasks();
-  render();
+function changeDeadline(taskId, deadline) {
+  optimisticUpdateTask(taskId, { deadline });
+  apiCallBackground("updateTask", { taskId, userEmail: state.currentUser.email, deadline });
 }
 
 async function deleteTask(taskId) {
   if (!confirm("Delete this task permanently?")) return;
-  await apiCall("deleteTask", { taskId });
+  // Instant removal from UI
+  state.tasks = state.tasks.filter(t => t.id !== taskId);
   setState({ view: "dashboard", selectedTaskId: null });
-  await refreshTasks();
   showToast("Task deleted");
-  render();
+  // Background sync
+  apiCallBackground("deleteTask", { taskId });
 }
 
 // ─── Create Task Form ───
@@ -1076,18 +1139,40 @@ async function submitCreateTask() {
     return;
   }
 
+  // Create a temporary task for instant UI
+  const tempId = "temp_" + Date.now().toString(36);
+  const newTask = {
+    id: tempId, title: title.trim(), description: description?.trim() || "",
+    assignee, priority, tag, deadline, status: "assigned",
+    accepted: null, rejectionReason: "", subtasks: [...createSubtasks],
+    comments: [], createdBy: state.currentUser.email, createdAt: new Date().toISOString(),
+  };
+
+  // Instant: add to UI and navigate
+  state.tasks.push(newTask);
+  createSubtasks = [];
+  showToast("Task created!");
+  navigate("dashboard");
+
+  // Background: create on server, then refresh to get real ID
+  startSync();
   const result = await apiCall("createTask", {
-    title: title.trim(), description: description?.trim() || "",
+    title: newTask.title, description: newTask.description,
     assignee, priority, tag, deadline,
-    subtasks: createSubtasks,
+    subtasks: newTask.subtasks,
     createdBy: state.currentUser.email,
   });
+  endSync();
 
-  if (result?.success) {
-    createSubtasks = [];
-    await refreshTasks();
-    showToast("Task created!");
-    navigate("dashboard");
+  if (result?.success && result.task) {
+    // Replace temp task with server version
+    state.tasks = state.tasks.map(t => t.id === tempId ? { ...result.task } : t);
+    render();
+  } else {
+    // Server failed — remove the temp task
+    state.tasks = state.tasks.filter(t => t.id !== tempId);
+    showToast("Failed to create task — please try again", true);
+    render();
   }
 }
 
@@ -1147,22 +1232,40 @@ async function addNewUser() {
   const role = document.getElementById("mu-role")?.value || "Intern";
   if (!name?.trim() || !email?.trim()) { showToast("Name and email required", true); return; }
 
+  // Instant UI update
+  state.users.push({ email: email.trim(), name: name.trim(), role });
+  showToast("Team member added!");
+  render();
+
+  // Background sync
+  startSync();
   const result = await apiCall("addUser", { name: name.trim(), email: email.trim(), role, requesterEmail: state.currentUser.email });
-  if (result?.success) {
-    const usersRes = await apiCall("getUsers");
-    if (usersRes?.users) state.users = usersRes.users;
-    showToast("Team member added!");
+  endSync();
+  if (!result?.success) {
+    // Rollback
+    state.users = state.users.filter(u => u.email !== email.trim());
+    showToast(result?.error || "Failed to add user", true);
     render();
   }
 }
 
 async function removeUser(email) {
   if (!confirm(`Remove ${email} from the team?`)) return;
+
+  // Save for rollback
+  const removedUser = state.users.find(u => u.email === email);
+  state.users = state.users.filter(u => u.email !== email);
+  showToast("Team member removed");
+  render();
+
+  // Background sync
+  startSync();
   const result = await apiCall("removeUser", { email });
-  if (result?.success) {
-    const usersRes = await apiCall("getUsers");
-    if (usersRes?.users) state.users = usersRes.users;
-    showToast("Team member removed");
+  endSync();
+  if (!result?.success) {
+    // Rollback
+    if (removedUser) state.users.push(removedUser);
+    showToast(result?.error || "Failed to remove user", true);
     render();
   }
 }
